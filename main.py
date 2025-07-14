@@ -1,7 +1,7 @@
 import logging
-from typing import List
+from typing import List, Annotated
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import ORJSONResponse
 
 from models import ContentCreate, Content, User
@@ -20,27 +20,36 @@ users = [
     {'id': 3, 'name': 'Max', 'age': 30},
 ]
 user_objs = [User(**user) for user in users]
-content_id = 0
+content_id = 1
 contents_objs = []
 
 
 # Endpoints
 @app.post('/contents')
-async def add_content(content_create: ContentCreate) -> Content:
+async def create_content(content_data: ContentCreate) -> Content:
     global content_id
-    created_user = next((user for user in user_objs if user.id == content_create.created_user_id))
+
+    # Find user
+    created_user = next((u for u in user_objs if u.id == content_data.created_user_id), None)
+    if not created_user:
+        raise HTTPException(404, "User not found")
+
+    # Check for duplicate content
+    if any(
+            c.release_year == content_data.release_year and
+            c.title == content_data.title and
+            c.created_user.id == content_data.created_user_id
+            for c in contents_objs
+    ):
+        raise HTTPException(409, "Content already exists")
+
+    # Create and add new content
+    content = Content(
+        id=content_id,
+        **content_data.model_dump(exclude={'created_user_id'}),
+        created_user=created_user
+    )
     content_id += 1
-    try:
-        content = Content(
-            id=content_id,
-            title=content_create.title,
-            created_user=created_user,
-            initial_title=content_create.initial_title,
-            release_year=content_create.release_year
-        )
-    except Exception as e:
-        log.error(f'An error occurred while creating content: {e}')
-        raise HTTPException(status_code=404, detail='An error occurred while creating content')
     contents_objs.append(content)
 
     return content
