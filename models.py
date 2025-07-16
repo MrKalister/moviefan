@@ -15,19 +15,18 @@ class ContentType(str, Enum):
     unknown = 'unknown'
 
 
-class Content(BaseModel):
-    id: int
+class BaseContent(BaseModel):
     title: str
-    created_user: User
     initial_title: str | None = None
     release_year: int | None = None
     # TODO: add func like lower() for content_type
     content_type: ContentType = ContentType.unknown
 
 
-class ContentCreate(BaseModel):
-    title: str
+class Content(BaseContent):
+    id: int
+    created_user: User
+
+
+class ContentCreate(BaseContent):
     created_user_id: int
-    initial_title: str | None = None
-    release_year: int | None = None
-    content_type: ContentType = ContentType.unknown

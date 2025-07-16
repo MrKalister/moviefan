@@ -1,8 +1,9 @@
 import logging
-from typing import List, Annotated
+from typing import List
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import ORJSONResponse
+from starlette.responses import RedirectResponse
 
 from models import ContentCreate, Content, User
 
@@ -25,6 +26,11 @@ contents_objs = []
 
 
 # Endpoints
+@app.get('/')
+async def home() -> RedirectResponse:
+    return RedirectResponse(url='docs/')
+
+
 @app.post('/contents')
 async def create_content(content_data: ContentCreate) -> Content:
     global content_id
@@ -43,11 +49,11 @@ async def create_content(content_data: ContentCreate) -> Content:
     ):
         raise HTTPException(409, "Content already exists")
 
-    # Create and add new content
+    # Create new content
     content = Content(
         id=content_id,
-        **content_data.model_dump(exclude={'created_user_id'}),
-        created_user=created_user
+        created_user=created_user,
+        **content_data.model_dump(),
     )
     content_id += 1
     contents_objs.append(content)
@@ -73,3 +79,14 @@ async def get_contents() -> List[Content]:
 @app.get('/users')
 async def get_users() -> List[User]:
     return user_objs
+
+
+@app.get('/users/{user_id}')
+async def get_content(user_id: int) -> User:
+    for user in user_objs:
+        if user.id == user_id:
+            return user
+
+    err_msg = 'User was not been found'
+    log.error(err_msg)
+    raise HTTPException(status_code=404, detail=err_msg)
